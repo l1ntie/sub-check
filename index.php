@@ -1,48 +1,36 @@
 <?php
-// Включаем логирование ошибок
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
-// Чтение JSON-запроса
+// Получаем тело запроса
 $data = json_decode(file_get_contents('php://input'), true);
 
-// Логируем входящие данные (для отладки)
-file_put_contents('debug.json', json_encode($data, JSON_PRETTY_PRINT));
-
-// Получение user ID из запроса
 $userId = $data['telegram_id'] ?? null;
-
-// Проверка наличия ID
 if (!$userId) {
-    echo json_encode([
-        'subscribed' => false,
-        'error' => 'User ID not found'
-    ]);
+    echo json_encode(['subscribed' => false, 'error' => 'User ID not found']);
     exit;
 }
 
-// Получаем токен и имя канала из переменных окружения
 $botToken = getenv('BOT_TOKEN');
 $channelUsername = getenv('CHANNEL_USERNAME');
 
-// Формируем запрос к Telegram API
+// Формируем URL для запроса к Telegram API
 $url = "https://api.telegram.org/bot$botToken/getChatMember?chat_id=$channelUsername&user_id=$userId";
+
 $response = file_get_contents($url);
 $result = json_decode($response, true);
 
-// Обработка ответа Telegram
+// Проверяем успешность ответа Telegram API
 if (!$result['ok']) {
-    echo json_encode([
-        'subscribed' => false,
-        'error' => $result['description'] ?? 'Telegram API error'
-    ]);
+    echo json_encode(['subscribed' => false, 'error' => $result['description'] ?? 'Telegram API error']);
     exit;
 }
 
+// Смотрим статус пользователя в чате
 $status = $result['result']['status'] ?? null;
-$isSubscribed = in_array($status, ['member', 'administrator', 'creator']);
 
-// Возврат результата
+// Считаем, что подписан, если статус — это:
+// 'creator', 'administrator', 'member'
+// Все остальные (left, kicked, banned и т.п.) — НЕ подписаны
+$isSubscribed = in_array($status, ['creator', 'administrator', 'member']);
+
 echo json_encode([
     'subscribed' => $isSubscribed,
     'status' => $status
