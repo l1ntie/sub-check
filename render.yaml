@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: telegram-sub-check
+    env: php
+    plan: free
+    buildCommand: ""
+    startCommand: ""
